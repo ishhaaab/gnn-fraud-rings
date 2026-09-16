@@ -1,0 +1,291 @@
+{
+  "ring_id": "ring-048",
+  "target_rider": "rider-000902",
+  "target_risk": 1.0,
+  "algorithm": "GNNExplainer",
+  "epochs": 100,
+  "top_features": [
+    {
+      "feature": "round_fare_fraction",
+      "importance": 0.3194233179092407
+    },
+    {
+      "feature": "node_type=rider",
+      "importance": 0.3154868483543396
+    },
+    {
+      "feature": "device_degree",
+      "importance": 0.29391834139823914
+    },
+    {
+      "feature": "distance_std",
+      "importance": 0.2906062602996826
+    },
+    {
+      "feature": "night_trip_fraction",
+      "importance": 0.2883884310722351
+    },
+    {
+      "feature": "distance_mean",
+      "importance": 0.28505462408065796
+    },
+    {
+      "feature": "route_repeat_fraction",
+      "importance": 0.2841539978981018
+    },
+    {
+      "feature": "route_degree",
+      "importance": 0.27632081508636475
+    },
+    {
+      "feature": "active_weeks",
+      "importance": 0.2746555805206299
+    },
+    {
+      "feature": "fare_std",
+      "importance": 0.2737736701965332
+    }
+  ],
+  "top_edges": [
+    {
+      "source": "rider-000902",
+      "source_type": "rider",
+      "target": "payment-000902",
+      "target_type": "payment",
+      "relation": "pays_with",
+      "importance": 0.2355697602033615
+    },
+    {
+      "source": "rider-000902",
+      "source_type": "rider",
+      "target": "device-ring-048",
+      "target_type": "device",
+      "relation": "uses",
+      "importance": 0.23545700311660767
+    },
+    {
+      "source": "rider-011640",
+      "source_type": "rider",
+      "target": "device-ring-048",
+      "target_type": "device",
+      "relation": "uses",
+      "importance": 0.2356051206588745
+    },
+    {
+      "source": "rider-012113",
+      "source_type": "rider",
+      "target": "device-ring-048",
+      "target_type": "device",
+      "relation": "uses",
+      "importance": 0.235525444149971
+    },
+    {
+      "source": "rider-018171",
+      "source_type": "rider",
+      "target": "device-ring-048",
+      "target_type": "device",
+      "relation": "uses",
+      "importance": 0.23545439541339874
+    },
+    {
+      "source": "rider-018171",
+      "source_type": "rider",
+      "target": "payment-ring-048",
+      "target_type": "payment",
+      "relation": "pays_with",
+      "importance": 0.23568229377269745
+    },
+    {
+      "source": "rider-018171",
+      "source_type": "rider",
+      "target": "driver-02598",
+      "target_type": "driver",
+      "relation": "rides_with",
+      "importance": 0.23537175357341766
+    },
+    {
+      "source": "rider-005754",
+      "source_type": "rider",
+      "target": "device-ring-048",
+      "target_type": "device",
+      "relation": "uses",
+      "importance": 0.23535989224910736
+    },
+    {
+      "source": "rider-005349",
+      "source_type": "rider",
+      "target": "driver-02598",
+      "target_type": "driver",
+      "relation": "rides_with",
+      "importance": 0.23534628748893738
+    },
+    {
+      "source": "rider-000902",
+      "source_type": "rider",
+      "target": "payment-ring-048",
+      "target_type": "payment",
+      "relation": "pays_with",
+      "importance": 0.2352721095085144
+    },
+    {
+      "source": "device-008002",
+      "source_type": "device",
+      "target": "driver-02598",
+      "target_type": "driver",
+      "relation": "rev_sees",
+      "importance": 0.23526260256767273
+    },
+    {
+      "source": "rider-012113",
+      "source_type": "rider",
+      "target": "payment-ring-048",
+      "target_type": "payment",
+      "relation": "pays_with",
+      "importance": 0.23524056375026703
+    },
+    {
+      "source": "rider-003182",
+      "source_type": "rider",
+      "target": "device-ring-048",
+      "target_type": "device",
+      "relation": "uses",
+      "importance": 0.23523765802383423
+    },
+    {
+      "source": "rider-013214",
+      "source_type": "rider",
+      "target": "driver-02598",
+      "target_type": "driver",
+      "relation": "rides_with",
+      "importance": 0.23518012464046478
+    },
+    {
+      "source": "driver-02322",
+      "source_type": "driver",
+      "target": "device-ring-048",
+      "target_type": "device",
+      "relation": "sees",
+      "importance": 0.2351679503917694
+    },
+    {
+      "source": "device-016497",
+      "source_type": "device",
+      "target": "driver-02598",
+      "target_type": "driver",
+      "relation": "rev_sees",
+      "importance": 0.23515261709690094
+    },
+    {
+      "source": "rider-011640",
+      "source_type": "rider",
+      "target": "payment-ring-048",
+      "target_type": "payment",
+      "relation": "pays_with",
+      "importance": 0.23511497676372528
+    },
+    {
+      "source": "rider-008002",
+      "source_type": "rider",
+      "target": "driver-02598",
+      "target_type": "driver",
+      "relation": "rides_with",
+      "importance": 0.2350824475288391
+    },
+    {
+      "source": "rider-005532",
+      "source_type": "rider",
+      "target": "device-ring-048",
+      "target_type": "device",
+      "relation": "uses",
+      "importance": 0.23497401177883148
+    },
+    {
+      "source": "rider-002979",
+      "source_type": "rider",
+      "target": "driver-02598",
+      "target_type": "driver",
+      "relation": "rides_with",
+      "importance": 0.23493310809135437
+    },
+    {
+      "source": "rider-008315",
+      "source_type": "rider",
+      "target": "driver-02598",
+      "target_type": "driver",
+      "relation": "rides_with",
+      "importance": 0.23488345742225647
+    },
+    {
+      "source": "device-009134",
+      "source_type": "device",
+      "target": "driver-02598",
+      "target_type": "driver",
+      "relation": "rev_sees",
+      "importance": 0.2348698228597641
+    },
+    {
+      "source": "rider-000212",
+      "source_type": "rider",
+      "target": "driver-02598",
+      "target_type": "driver",
+      "relation": "rides_with",
+      "importance": 0.23486196994781494
+    },
+    {
+      "source": "rider-005532",
+      "source_type": "rider",
+      "target": "payment-ring-048",
+      "target_type": "payment",
+      "relation": "pays_with",
+      "importance": 0.23486167192459106
+    },
+    {
+      "source": "rider-005754",
+      "source_type": "rider",
+      "target": "payment-ring-048",
+      "target_type": "payment",
+      "relation": "pays_with",
+      "importance": 0.23485589027404785
+    },
+    {
+      "source": "rider-001958",
+      "source_type": "rider",
+      "target": "driver-02598",
+      "target_type": "driver",
+      "relation": "rides_with",
+      "importance": 0.23478566110134125
+    },
+    {
+      "source": "rider-005532",
+      "source_type": "rider",
+      "target": "driver-02598",
+      "target_type": "driver",
+      "relation": "rides_with",
+      "importance": 0.23468272387981415
+    },
+    {
+      "source": "device-004287",
+      "source_type": "device",
+      "target": "driver-02598",
+      "target_type": "driver",
+      "relation": "rev_sees",
+      "importance": 0.23465582728385925
+    },
+    {
+      "source": "device-005951",
+      "source_type": "device",
+      "target": "driver-02598",
+      "target_type": "driver",
+      "relation": "rev_sees",
+      "importance": 0.23464642465114594
+    },
+    {
+      "source": "device-001706",
+      "source_type": "device",
+      "target": "driver-02598",
+      "target_type": "driver",
+      "relation": "rev_sees",
+      "importance": 0.23442550003528595
+    }
+  ]
+}

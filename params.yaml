@@ -1,0 +1,19 @@
+generate:
+  seed: 0
+  n_riders: 20000
+  n_drivers: 3000
+  n_rings: 50
+  tag: wk00
+
+train:
+  seed: 0
+  gnn_epochs: 40
+  gnn_patience: 8
+  gnn_lr: 0.005
+  deepwalk_dim: 64
+  walk_length: 20
+  walks_per_node: 4
+  deepwalk_epochs: 3
+
+explain:
+  epochs: 100

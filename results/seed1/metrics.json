@@ -1,0 +1,166 @@
+{
+  "run": {
+    "model_version": "graphsage-69ee7ceebc32",
+    "created_at": "2026-09-16T08:51:04.150567+00:00",
+    "seed": 1,
+    "gnn_epochs": 40,
+    "gnn_patience": 8,
+    "gnn_lr": 0.005,
+    "deepwalk_dim": 64,
+    "walk_length": 20,
+    "walks_per_node": 4,
+    "deepwalk_epochs": 3,
+    "neighbor_sampling_requested": true,
+    "neighbor_sampling_used": true,
+    "gnn_best_epoch": 9
+  },
+  "data": {
+    "riders": 20000,
+    "drivers": 3000,
+    "trips": 99717,
+    "fraud_riders": 492,
+    "rings": 50
+  },
+  "splits": {
+    "train": {
+      "riders": 12011,
+      "fraud_riders": 306,
+      "rings": 30
+    },
+    "val": {
+      "riders": 3998,
+      "fraud_riders": 96,
+      "rings": 10
+    },
+    "test": {
+      "riders": 3991,
+      "fraud_riders": 90,
+      "rings": 10
+    }
+  },
+  "models": {
+    "baseline": {
+      "pr_auc": 0.6173807865010726,
+      "recall_at_1pct_fpr": 0.5777777777777777,
+      "precision_at_100": 0.54,
+      "precision_at_500": 0.134
+    },
+    "deepwalk_isolation": {
+      "pr_auc": 0.08093817122185931,
+      "recall_at_1pct_fpr": 0.07777777777777778,
+      "precision_at_100": 0.16,
+      "precision_at_500": 0.074
+    },
+    "tabular_plus_deepwalk": {
+      "pr_auc": 0.5572942267863272,
+      "recall_at_1pct_fpr": 0.5,
+      "precision_at_100": 0.48,
+      "precision_at_500": 0.128
+    },
+    "graphsage": {
+      "pr_auc": 1.0,
+      "recall_at_1pct_fpr": 1.0,
+      "precision_at_100": 0.9,
+      "precision_at_500": 0.18
+    }
+  },
+  "ring_size_slices": {
+    "small_rings_5_7": {
+      "baseline": {
+        "pr_auc": 0.6815713308775002,
+        "recall_at_1pct_fpr": 0.7894736842105263,
+        "precision_at_100": 0.15,
+        "precision_at_500": 0.034
+      },
+      "deepwalk_isolation": {
+        "pr_auc": 0.018811796271402524,
+        "recall_at_1pct_fpr": 0.05263157894736842,
+        "precision_at_100": 0.03,
+        "precision_at_500": 0.018
+      },
+      "tabular_plus_deepwalk": {
+        "pr_auc": 0.6232522935029633,
+        "recall_at_1pct_fpr": 0.7368421052631579,
+        "precision_at_100": 0.15,
+        "precision_at_500": 0.034
+      },
+      "graphsage": {
+        "pr_auc": 1.0,
+        "recall_at_1pct_fpr": 1.0,
+        "precision_at_100": 0.19,
+        "precision_at_500": 0.038
+      },
+      "support": {
+        "positive_riders": 19,
+        "negative_riders": 3901
+      }
+    },
+    "large_rings_8_plus": {
+      "baseline": {
+        "pr_auc": 0.5515025053524565,
+        "recall_at_1pct_fpr": 0.5211267605633803,
+        "precision_at_100": 0.4,
+        "precision_at_500": 0.1
+      },
+      "deepwalk_isolation": {
+        "pr_auc": 0.06962801918999652,
+        "recall_at_1pct_fpr": 0.08450704225352113,
+        "precision_at_100": 0.14,
+        "precision_at_500": 0.058
+      },
+      "tabular_plus_deepwalk": {
+        "pr_auc": 0.4793038415194277,
+        "recall_at_1pct_fpr": 0.43661971830985913,
+        "precision_at_100": 0.35,
+        "precision_at_500": 0.094
+      },
+      "graphsage": {
+        "pr_auc": 0.9999999999999998,
+        "recall_at_1pct_fpr": 1.0,
+        "precision_at_100": 0.71,
+        "precision_at_500": 0.142
+      },
+      "support": {
+        "positive_riders": 71,
+        "negative_riders": 3901
+      }
+    }
+  },
+  "lowest_scoring_test_rings": [
+    {
+      "ring_id": "ring-049",
+      "ring_size": 5,
+      "mean_graphsage_score": 0.9762195348739624,
+      "max_graphsage_score": 0.9984089732170105,
+      "riders": 5
+    },
+    {
+      "ring_id": "ring-039",
+      "ring_size": 7,
+      "mean_graphsage_score": 0.9894722104072571,
+      "max_graphsage_score": 0.9971464276313782,
+      "riders": 7
+    },
+    {
+      "ring_id": "ring-048",
+      "ring_size": 12,
+      "mean_graphsage_score": 0.991370439529419,
+      "max_graphsage_score": 0.9998817443847656,
+      "riders": 12
+    },
+    {
+      "ring_id": "ring-046",
+      "ring_size": 8,
+      "mean_graphsage_score": 0.9939515590667725,
+      "max_graphsage_score": 0.9997923970222473,
+      "riders": 8
+    },
+    {
+      "ring_id": "ring-047",
+      "ring_size": 13,
+      "mean_graphsage_score": 0.9993820190429688,
+      "max_graphsage_score": 0.9999648332595825,
+      "riders": 13
+    }
+  ]
+}

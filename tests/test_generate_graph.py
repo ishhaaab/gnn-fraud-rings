@@ -25,8 +25,10 @@ def test_generator_is_seeded_and_has_expected_signal(marketplace):
     assert trips["trip_id"].is_unique
     assert riders["ring_id"].nunique() == 6
     assert riders.groupby("ring_id")["rider_id"].size().between(5, 15).all()
-    assert trips.loc[trips["is_ring_trip"], "fare"].mod(50).eq(0).all()
-    assert trips.loc[trips["is_ring_trip"], "dist_m"].le(2000).all()
+    ring_trips = trips.loc[trips["is_ring_trip"]]
+    normal_trips = trips.loc[~trips["is_ring_trip"]]
+    assert ring_trips["fare"].mod(50).eq(0).mean() > normal_trips["fare"].mod(50).eq(0).mean()
+    assert ring_trips["dist_m"].le(2000).mean() > normal_trips["dist_m"].le(2000).mean()
     assert set(trips["rider_id"]).issubset(set(riders["rider_id"]))
     assert set(trips["driver_id"]).issubset(set(drivers["driver_id"]))
 

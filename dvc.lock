@@ -1,0 +1,121 @@
+schema: '2.0'
+stages:
+  generate:
+    cmd: python -m src.generate --seed 0 --n-riders 20000 --n-drivers 3000 --n-rings 50 --tag wk00
+    deps:
+    - path: src/generate.py
+      hash: md5
+      md5: e7f72d89c143a38af0602dd70a5cd454
+      size: 14396
+    params:
+      params.yaml:
+        generate:
+          seed: 0
+          n_riders: 20000
+          n_drivers: 3000
+          n_rings: 50
+          tag: wk00
+    outs:
+    - path: data/graph_snapshots/wk00/drivers.parquet
+      hash: md5
+      md5: ac2e92e67db7682b8ed1c5de47690ba7
+      size: 35377
+    - path: data/graph_snapshots/wk00/metadata.json
+      hash: md5
+      md5: f166578c56141640d04ee61489eea82f
+      size: 144
+    - path: data/graph_snapshots/wk00/riders.parquet
+      hash: md5
+      md5: a5ca315779e02b25e018dc365006c6d4
+      size: 225449
+    - path: data/graph_snapshots/wk00/trips.parquet
+      hash: md5
+      md5: 02c43fcb3a7a54e4723bd0dc9a19d490
+      size: 3145984
+    - path: data/processed/drivers.parquet
+      hash: md5
+      md5: ac2e92e67db7682b8ed1c5de47690ba7
+      size: 35377
+    - path: data/processed/metadata.json
+      hash: md5
+      md5: f166578c56141640d04ee61489eea82f
+      size: 144
+    - path: data/processed/riders.parquet
+      hash: md5
+      md5: a5ca315779e02b25e018dc365006c6d4
+      size: 225449
+    - path: data/processed/trips.parquet
+      hash: md5
+      md5: 02c43fcb3a7a54e4723bd0dc9a19d490
+      size: 3145984
+  train:
+    cmd: python -m src.evaluate --data-dir data/processed --out results/metrics.json --seed 0 --gnn-epochs 40 --gnn-patience 8 --gnn-lr 0.005 --deepwalk-dim 64 --walk-length 20 --walks-per-node 4 --deepwalk-epochs 3 --no-mlflow
+    deps:
+    - path: data/processed/drivers.parquet
+      hash: md5
+      md5: ac2e92e67db7682b8ed1c5de47690ba7
+      size: 35377
+    - path: data/processed/riders.parquet
+      hash: md5
+      md5: a5ca315779e02b25e018dc365006c6d4
+      size: 225449
+    - path: data/processed/trips.parquet
+      hash: md5
+      md5: 02c43fcb3a7a54e4723bd0dc9a19d490
+      size: 3145984
+    - path: src/baseline.py
+      hash: md5
+      md5: cd97a60fae9243655174b875328e8d80
+      size: 7538
+    - path: src/deepwalk.py
+      hash: md5
+      md5: ab04c255e80afbf5a2093fbb27e10dc5
+      size: 11192
+    - path: src/evaluate.py
+      hash: md5
+      md5: 39f9280f5ecff5f6a352d07547c71c00
+      size: 15539
+    - path: src/gnn.py
+      hash: md5
+      md5: 99014f6a2b2d9a1d795f2ba2c5a63e85
+      size: 29992
+    - path: src/graph.py
+      hash: md5
+      md5: a73e4d24b0a64e91cedc886a9f6ae04b
+      size: 7724
+    - path: src/split.py
+      hash: md5
+      md5: f78702f201c078f249821775a91ab7f6
+      size: 4345
+    params:
+      params.yaml:
+        train:
+          seed: 0
+          gnn_epochs: 40
+          gnn_patience: 8
+          gnn_lr: 0.005
+          deepwalk_dim: 64
+          walk_length: 20
+          walks_per_node: 4
+          deepwalk_epochs: 3
+    outs:
+    - path: results/baseline.joblib
+      hash: md5
+      md5: c6d7bb170b4df0ded23a7aa7f29d13d7
+      size: 691046
+    - path: results/baseline_deepwalk.joblib
+      hash: md5
+      md5: 4829a7d969f04b0c001fd35f3c779729
+      size: 705446
+    - path: results/graphsage.pt
+      hash: md5
+      md5: 24a85143d0927a085d5aac5a0b2a3653
+      size: 16553
+    - path: results/metrics.json
+      hash: md5
+      md5: 57f1b6fb773705fd3a08dc4ad5c377b8
+      size: 4323
+    - path: results/predictions.parquet
+      hash: md5
+      md5: ec438d0d954ae060e63fffadb21ee1ce
+      size: 881965

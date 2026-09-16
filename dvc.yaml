@@ -1,0 +1,57 @@
+stages:
+  generate:
+    cmd: >-
+      python -m src.generate
+      --seed ${generate.seed}
+      --n-riders ${generate.n_riders}
+      --n-drivers ${generate.n_drivers}
+      --n-rings ${generate.n_rings}
+      --tag ${generate.tag}
+    deps:
+      - src/generate.py
+    params:
+      - generate
+    outs:
+      - data/processed/riders.parquet
+      - data/processed/drivers.parquet
+      - data/processed/trips.parquet
+      - data/processed/metadata.json
+      - data/graph_snapshots/${generate.tag}/riders.parquet
+      - data/graph_snapshots/${generate.tag}/drivers.parquet
+      - data/graph_snapshots/${generate.tag}/trips.parquet
+      - data/graph_snapshots/${generate.tag}/metadata.json
+
+  train:
+    cmd: >-
+      python -m src.evaluate
+      --data-dir data/processed
+      --out results/metrics.json
+      --seed ${train.seed}
+      --gnn-epochs ${train.gnn_epochs}
+      --gnn-patience ${train.gnn_patience}
+      --gnn-lr ${train.gnn_lr}
+      --deepwalk-dim ${train.deepwalk_dim}
+      --walk-length ${train.walk_length}
+      --walks-per-node ${train.walks_per_node}
+      --deepwalk-epochs ${train.deepwalk_epochs}
+      --no-mlflow
+    deps:
+      - data/processed/riders.parquet
+      - data/processed/drivers.parquet
+      - data/processed/trips.parquet
+      - src/baseline.py
+      - src/deepwalk.py
+      - src/evaluate.py
+      - src/gnn.py
+      - src/graph.py
+      - src/split.py
+    params:
+      - train
+    outs:
+      - results/predictions.parquet
+      - results/baseline.joblib
+      - results/baseline_deepwalk.joblib
+      - results/graphsage.pt
+    metrics:
+      - results/metrics.json:
+          cache: false
