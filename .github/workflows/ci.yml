@@ -1,0 +1,50 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install CPU PyTorch
+        run: pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-pyg.txt
+      - name: Verify neighbor sampler
+        run: python -c "import pyg_lib; print(pyg_lib.__version__)"
+      - name: Test
+        run: pytest -q
+      - name: Materialize smoke artifacts
+        run: |
+          python -m src.generate --seed 7 --n-riders 150 --n-drivers 42 --n-rings 6 --tag ci
+          python -m src.evaluate --seed 7 --gnn-epochs 2 --gnn-patience 2 --deepwalk-dim 8 --walk-length 4 --walks-per-node 1 --deepwalk-epochs 1 --full-batch --no-mlflow
+      - name: Execute credibility notebook
+        env:
+          MPLBACKEND: Agg
+        run: python scripts/validate_notebook.py notebooks/01_rings.ipynb
+      - name: Build and smoke-test API image
+        run: |
+          docker build -t gnn-fraud-rings:ci .
+          container_id=$(docker run -d -p 8000:8000 gnn-fraud-rings:ci)
+          trap 'docker logs "$container_id"; docker rm -f "$container_id"' EXIT
+          for attempt in {1..20}; do
+            if curl --fail --silent http://localhost:8000/ready; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent http://localhost:8000/ready
+          python scripts/benchmark_api.py \
+            --rider-id rider-000000 \
+            --requests 200 \
+            --max-p95-ms 200

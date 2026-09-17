@@ -1,78 +1,103 @@
-# Project 2 — Graph Collusion Rings: Rider-Driver-Device Fraud with GNNs
+# Project 2: graph collusion rings
 
-## What this project is
+## What this project does
 
-Marketplace fraud at Uber is rarely one bad transaction. It is rings: a
-handful of riders and drivers sharing devices or payment IDs, running short
-repeated trips with round fares to farm incentives or launder referrals.
-Tabular features on single trips miss this because the signal lives in the
-relationships. This project builds that relationship graph and learns on it.
+Fraud in an Uber-style marketplace is rarely one bad transaction. A ring can
+involve several riders and drivers who share devices or payment IDs and repeat
+short trips with round fares to farm incentives or launder referrals. A model
+that sees one trip at a time misses these relationships, so this project
+represents the marketplace as a graph and trains models on it.
 
-## Why it stands out
+## What it demonstrates
 
-The average applicant's "fraud project" runs LightGBM on a credit-card CSV
-and reports 99 percent accuracy on 99:1 imbalanced data — a number that means
-nothing because the majority class alone gives 99 percent. This project:
+A fraud classifier can report 99 percent accuracy on 99:1 data by predicting the
+majority class. That metric says little about the minority class. This project
+instead:
 
-1. Models riders, drivers, devices, and payment IDs as a heterogeneous graph.
-2. Compares three approaches honestly: tabular LightGBM baseline, unsupervised
-   DeepWalk + isolation (for rings with no labels), supervised GraphSAGE.
-3. Evaluates with PR-AUC, recall at fixed 1% FPR, and precision@100/500 —
-   "of the top 100 flags ops can actually review, how many are real."
-4. Explains flags with PGExplainer subgraphs ("shared device d-88, 11
-   coincident trips"), because ops cannot act on a bare score.
-5. Ablates tabular-only vs +graph features to prove the graph earned its keep.
+1. Represents riders, drivers, devices, and payment IDs in a heterogeneous graph.
+2. Compares a tabular LightGBM baseline, unsupervised DeepWalk plus isolation,
+   and supervised GraphSAGE.
+3. Reports PR-AUC, recall at a fixed 1% FPR, and precision@100/500. The
+   precision metrics show how many true fraud riders appear within fixed review
+   budgets.
+4. Uses GNNExplainer subgraphs so an operations reviewer can inspect the shared
+   devices, payments, drivers, and trip connections behind a score.
+5. Compares tabular-only and graph-enhanced features to measure whether the
+   graph features help.
 
-## Data (synthetic, stated openly)
+## Data
 
-Real marketplace fraud graphs are not public. Generate one with a seeded
-script and document the generator as part of the deliverable:
+Real marketplace fraud graphs are not public. The generator creates a synthetic
+graph with a fixed seed, and the generator code is part of the project:
 
-- 20k riders, 3k drivers, devices + payment IDs. Normal behaviour: Zipf trip
-  counts, home/work H3 hexes, realistic fare/distance scatter.
-- 40-60 injected rings: 5-15 riders + 2-4 drivers sharing 1-2 devices or one
-  payment ID, short repeated routes, round-amount fares.
-- Tables versioned with DVC: `riders, drivers, trips(trip_id, rider, driver,
-  device, payment, fare, dist_m, hour)`. Weekly snapshots under
-  `data/graph_snapshots/` for the retrain story.
-
-Saying "synthetic, seeded, generator in repo" is stronger than pretending a
-generic CSV is Uber data. Reviewers respect the honesty.
+- 20,000 riders, 3,000 drivers, devices, and payment IDs. Normal trips follow
+  Zipf trip counts, home/work H3 cells, and realistic fare-distance variation.
+- 50 injected rings with 5-15 riders and 2-4 drivers sharing devices or
+  payment IDs. Only a subset of their otherwise normal trips receives fraud
+  signals. Benign groups of the same size also share identifiers, so reuse
+  degree alone is not a perfect label proxy.
+- DVC versions the `riders`, `drivers`, and `trips` tables. The trip table
+  contains `trip_id`, `rider`, `driver`, `device`, `payment`, `fare`, `dist_m`,
+  and `hour`. Versioned synthetic snapshots under `data/graph_snapshots/`
+  exercise the retraining workflow.
 
 ## Models
 
-1. **LightGBM baseline** on rider aggregates (trip count, mean fare,
-   device count, payment count). Expected: decent, misses quiet rings.
-2. **DeepWalk + isolation**: unsupervised embeddings, flags structural
-   outliers. Catches rings with zero labels.
-3. **GraphSAGE** (PyTorch Geometric, 2 layers, neighbor sampling) on the
-   heterogeneous graph. Node features: degree stats, fare/distance moments,
-   time entropy. This is the headline model.
+1. **LightGBM baseline.** Uses rider aggregates such as trip count, mean fare,
+   device count, and payment count. It provides a local-feature baseline and
+   should miss rings whose individual riders look normal.
+2. **DeepWalk plus isolation.** Learns unsupervised graph embeddings and ranks
+   structural outliers without labels.
+3. **GraphSAGE.** Uses PyTorch Geometric, two layers, neighbor sampling, and the
+   heterogeneous graph. Its node features include degree statistics,
+   fare/distance moments, and time entropy.
+4. **Ablations.** LightGBM with cross-rider graph degrees separates handcrafted
+   structural lift from message passing, while GraphSAGE without edges measures
+   how much the GNN gets from local node features alone.
 
-## Evaluation (the part recruiters read)
+## Evaluation
 
-- Never accuracy. PR-AUC, recall@1%FPR, precision@100/500.
-- Ablation table: tabular-only vs +DeepWalk features vs GraphSAGE.
-- Slice by ring size: small rings (5-7 riders) are the hard case; report them
-  separately instead of letting big rings inflate the mean.
-- 3 PGExplainer case studies with subgraph figures in `results/`.
+- Do not use accuracy as the headline metric. Report PR-AUC, recall@1%FPR, and
+  precision@100/500.
+- Include an ablation for tabular-only features, tabular plus DeepWalk features,
+  and GraphSAGE.
+- Break out the 5-7 rider rings because they are the harder case. Large rings
+  should not hide their results.
+- Include three GNNExplainer case studies with subgraph figures and JSON
+  evidence in `results/`.
 
 ## Serving
 
-FastAPI `POST /score_rider` returns risk + human-readable reasons +
-latency. `GET /ring/{id}` returns the subgraph for a review UI. Neighbor
-fetch must be precomputed/cached — no full-graph traversal per request.
-Evidently drift on fare/distance/device-reuse; weekly snapshot retrain.
+FastAPI `POST /score_rider` returns a risk score, human-readable reasons, and
+latency. `GET /ring/{id}` returns an inferred candidate subgraph for a review
+UI. The service verifies a checksum manifest and caches only label-free score
+and candidate-ring artifacts, so requests do not traverse the full graph.
+
+Evidently tracks drift in fare, distance, and device reuse between synthetic
+snapshots. The runbook is an executable retraining drill, not a production raw
+data pipeline.
 
 ## JD mapping (Uber ML Engineering Intern, Bangalore)
 
-Data prep (SQL/DuckDB + DVC snapshots) -> experimentation (3-way comparison)
--> API integration (FastAPI scoring + ring lookup) -> evaluation + error
-analysis (PR metrics, slices, explainer cases) -> monitoring/retraining
-(drift + weekly snapshots). Preferred boxes: recommender-adjacent graph ML,
-PyTorch, FastAPI, Docker, MLOps.
+Data preparation uses pandas/parquet and DVC snapshots. The experiment compares
+three model approaches. FastAPI provides scoring and ring lookup. Evaluation
+covers PR metrics, ring-size slices, and explainer cases. Monitoring compares
+drift between weekly snapshots.
 
-## Resume bullet (fill in X when measured)
+These pieces match the role's focus on graph ML near recommender systems,
+PyTorch, FastAPI, Docker, and MLOps.
 
-"Detected rider-driver collusion rings with GraphSAGE on heterogeneous graph;
-precision@100 X vs Y for tabular baseline, served with explainer subgraphs."
+## Measured result
+
+On seed 0, GraphSAGE reaches PR-AUC 0.977, recall at 1% FPR 1.000, and
+precision@100 0.88, compared with 0.51 for local LightGBM and 0.82 for
+LightGBM with graph degrees. The no-edge GNN reaches 0.377 PR-AUC. Seed 1 gives
+GraphSAGE 0.932 PR-AUC and 0.84 precision@100. These are synthetic results from
+a transductive benchmark.
+
+## Resume bullet
+
+"Detected synthetic rider-driver collusion rings with GraphSAGE on a
+70,235-node typed graph, raising precision@100 from 0.51 for local LightGBM to
+0.88, validating message passing with graph-degree/no-edge ablations, and
+serving checksummed candidate rings through FastAPI."

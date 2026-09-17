@@ -1,62 +1,73 @@
-# Build Guide — GNN Collusion Rings
+# Build guide: GNN collusion rings
 
-High-level build order. Each phase ends with a check.
+The phases below are complete. Run the checks when you change the generator or
+model configuration.
 
-## Phase 0 — Environment (half day)
+## Phase 0: environment (half day)
 
-1. `.venv` Python 3.11+ in `gnn-fraud-rings/`.
-2. Install: `torch torch-geometric duckdb fastapi uvicorn mlflow evidently
-   lightgbm scikit-learn pandas numpy pytest`.
-   Note: torch-geometric needs the matching torch build; install CPU wheels
-   first, verify `import torch_geometric` before anything else.
-3. Verify: `python -c "import torch, torch_geometric, lightgbm; print('ok')"`.
+1. Use Python 3.11 in `.venv` at the repository root.
+2. Install `torch torch-geometric fastapi uvicorn mlflow evidently
+   lightgbm scikit-learn pandas numpy pytest`. Torch Geometric must match the
+   installed Torch build. Install the CPU Torch wheel first, then check
+   `import torch_geometric` before installing the remaining dependencies.
+3. Install the matching `pyg-lib` wheel from `requirements-pyg.txt` for
+   neighbor sampling, then verify the imports.
 
-## Phase 1 — Seeded generator (days 1-3)
+## Phase 1: seeded generator (days 1-3)
 
-1. `src/generate.py`: `make_marketplace(seed, n_riders=20000, n_drivers=3000,
-   n_rings=50) -> riders, drivers, trips` DataFrames. Normal behaviour via
-   Zipf trip counts + H3 home/work; rings via shared device/payment +
-   repeated short routes + round fares. Persist parquet to
-   `data/processed/` + snapshot copy to `data/graph_snapshots/wk00/`.
-2. `src/graph.py`: build heterogeneous edge lists
-   (rider-driver, rider-device, rider-payment, driver-device).
-3. Check: `notebooks/01_rings.ipynb` — degree histograms, one ring
-   visualised, ring trip table eyeballed. A reviewer must believe the
-   generator before trusting any metric.
+1. In `src/generate.py`, `make_marketplace(seed, n_riders=20000,
+   n_drivers=3000, n_rings=50)` returns `riders`, `drivers`, and `trips`
+   DataFrames. Generate normal behavior with Zipf trip counts and H3 home/work
+   cells. Inject rings through shared device or payment IDs, repeated short
+   routes, and round fares. Write parquet files to `data/processed/` and copy
+   the initial snapshot to `data/graph_snapshots/wk00/`.
+2. In `src/graph.py`, build the heterogeneous edge lists for rider-driver,
+   rider-device, rider-payment, and driver-device relations.
+3. Use `notebooks/01_rings.ipynb` to inspect degree histograms, one rendered
+   ring, and its trip table. These checks catch problems in the generated data
+   before model evaluation.
 
-## Phase 2 — Three-way modelling (days 4-9)
+## Phase 2: three-way modeling (days 4-9)
 
-1. `src/baseline.py`: rider aggregates -> LightGBM, stratified temporal-ish
-   split by week (no random leak across weeks).
-2. `src/deepwalk.py`: random walks + Word2Vec -> embeddings -> isolation
-   score. Unsupervised, so evaluate ranking only.
-3. `src/gnn.py`: 2-layer GraphSAGE with neighbor sampling, node features
-   (degree stats, fare/dist moments, time entropy). Train/val/test by rings,
-   not by nodes — all members of a ring in one split, or leakage.
-4. Check: PR-AUC + recall@1%FPR + p@100/500 for all three in
-   `results/metrics.json`. If GraphSAGE < baseline, check split leakage
-   first, then feature normalisation.
+1. Build local rider aggregates for LightGBM in `src/baseline.py`. All models
+   use the activation-ordered, ring-grouped split in `src/split.py`.
+2. In `src/deepwalk.py`, create random walks, train Word2Vec embeddings, and
+   compute the isolation score. Because this model is unsupervised, evaluate
+   its ranking only.
+3. Train the two-layer GraphSAGE model in `src/gnn.py` with neighbor sampling
+   and standardized node features for degree statistics, fare/distance moments,
+   and time entropy. Split train, validation, and test by rings, not by nodes.
+   Every member of a ring must stay in the same split.
+4. Check `results/metrics.json` for PR-AUC, recall@1%FPR, and p@100/500 for
+   every model. If GraphSAGE scores below the baseline, check for split leakage
+   before tuning feature normalization.
 
-## Phase 3 — Ablation + explain (days 10-12)
+## Phase 3: ablation and explanations (days 10-12)
 
-1. `src/evaluate.py`: ablation (tabular-only, +DeepWalk, GraphSAGE), slice
-   by ring size (5-7 vs 8+ riders).
-2. `src/explain.py`: PGExplainer or GNNExplainer on 3 rings -> subgraph
+1. In `src/evaluate.py`, run local tabular, graph-degree, DeepWalk, tabular plus
+   DeepWalk, no-edge GNN, and GraphSAGE comparisons. Report slices for 5-7 and
+   8+ rider rings.
+2. Run GNNExplainer on three rings in `src/explain.py` and save the subgraph
    figures in `results/`.
-3. Write failure cases into README: which rings were missed and why
-   (e.g. single-device solo fraud looks tabular-normal).
-4. Check: `pytest tests/` green; metrics reproduce on second seed.
+3. Document failure cases and near misses in README. The canonical run misses
+   no test ring member at 1% FPR, so record `ring-046`, the lowest-mean ring.
+4. Run `pytest tests/`. Seed 1 metrics should be under `results/seed1/`.
 
-## Phase 4 — API + MLOps (days 13-14)
+## Phase 4: API and MLOps (days 13-14)
 
-1. `api/main.py`: `POST /score_rider` (risk + reasons + latency),
-   `GET /ring/{id}` (subgraph). Precompute 1-hop neighbor cache at startup.
-2. `Dockerfile` + MLflow runs + Evidently drift on fare/dist/device-reuse
-   + weekly snapshot retrain doc.
-3. Check: containerised latency over 200 requests; p@100 numbers in README.
+1. In `api/main.py`, implement `POST /score_rider` for risk, reasons, and
+   latency, `GET /ring/{id}` for an inferred candidate subgraph, and the
+   readiness endpoint. Verify the manifest and build label-free caches at
+   startup.
+2. Set up the `Dockerfile`, MLflow runs, Evidently drift checks for
+   fare/distance/device reuse, and the weekly snapshot retraining runbook.
+3. Check the service with 200 local HTTP requests. The recorded p95 is
+   19.44 ms, and the precision@100 results are in README. A container build
+   requires a running Docker daemon.
 
 ## Interview prep
 
-Be able to explain: why accuracy is banned here; why split by rings;
-what neighbor sampling fixes; one reason GraphSAGE beats tabular
-(relational propagation) and one case where it loses (isolated fraud).
+Prepare to explain why accuracy is not used, why the split is by rings, and what
+neighbor sampling fixes. Also explain why GraphSAGE can beat the tabular model
+by passing information through shared entities, and when it can lose, such as
+when a fraud rider is isolated.
