@@ -12,6 +12,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 import pandas as pd
 import torch
 from torch_geometric.explain import Explainer, GNNExplainer
@@ -42,8 +43,9 @@ def explain_ring(
     *,
     epochs: int = 100,
     max_edges: int = 30,
+    model_version: str | None = None,
 ) -> Path:
-    """Explain the highest-risk rider in a ring and save a subgraph figure."""
+    """Explain the lowest-risk rider in a ring and save a subgraph figure."""
     if epochs <= 0 or max_edges <= 0:
         raise ValueError("epochs and max_edges must be positive")
     required = (
@@ -67,7 +69,7 @@ def explain_ring(
     model.eval()
     with torch.no_grad():
         risks = torch.sigmoid(model(data.x, data.edge_index))
-    target_rider, target_index = max(members, key=lambda item: float(risks[item[1]]))
+    target_rider, target_index = min(members, key=lambda item: float(risks[item[1]]))
 
     explainer = Explainer(
         model=model,
@@ -181,8 +183,17 @@ def explain_ring(
     figure_path = out / f"explanation_{safe_ring_id}.png"
     evidence_path = out / f"explanation_{safe_ring_id}.json"
 
-    plt.figure(figsize=(11, 7))
-    positions = nx.spring_layout(graph, seed=7, k=0.28, iterations=200)
+    plt.figure(figsize=(12, 6))
+    positions = nx.spring_layout(graph, seed=7, k=0.20, iterations=400)
+    nodes_in_order = list(graph)
+    coordinates = np.asarray([positions[node] for node in nodes_in_order])
+    coordinates -= coordinates.mean(axis=0)
+    if len(coordinates) > 1:
+        _, _, axes = np.linalg.svd(coordinates, full_matrices=False)
+        coordinates = coordinates @ axes.T
+    positions = {
+        node: coordinates[index] for index, node in enumerate(nodes_in_order)
+    }
     colors = [NODE_COLORS.get(graph.nodes[node]["node_type"], "#777777") for node in graph]
     sizes = [900 if graph.nodes[node]["is_target"] else 430 for node in graph]
     widths = [0.8 + 5 * graph.edges[edge]["importance"] for edge in graph.edges]
@@ -202,7 +213,10 @@ def explain_ring(
         if (
             metadata["is_target"]
             or metadata["node_type"] == "driver"
-            or "-ring-" in node_id
+            or (
+                metadata["node_type"] in {"device", "payment"}
+                and graph.degree(node) >= 2
+            )
         ):
             labels[node] = node_id.replace("rider-", "r-").replace("driver-", "d-")
     nx.draw_networkx_labels(graph, positions, labels=labels, font_size=7)
@@ -219,7 +233,13 @@ def explain_ring(
         )
         for node_type, color in NODE_COLORS.items()
     ]
-    plt.legend(handles=legend_handles, loc="lower left", frameon=False, ncol=4)
+    legend_handles.append(
+        plt.Line2D(
+            [0], [0], color="#4a4a4a", linewidth=3,
+            label="Thicker = more important",
+        )
+    )
+    plt.legend(handles=legend_handles, loc="lower left", frameon=False, ncol=5)
     plt.axis("off")
     plt.tight_layout()
     plt.savefig(figure_path, dpi=180, bbox_inches="tight")
@@ -229,6 +249,8 @@ def explain_ring(
         "ring_id": ring_id,
         "target_rider": target_rider,
         "target_risk": float(risks[target_index]),
+        "target_selection": "lowest-risk member",
+        "model_version": model_version,
         "algorithm": "GNNExplainer",
         "epochs": epochs,
         "top_features": feature_evidence,
@@ -266,7 +288,7 @@ def main() -> None:
             predictions.loc[
                 (predictions["split"] == "test") & predictions["ring_id"].notna()
             ]
-            .sort_values("graphsage_score", ascending=False)["ring_id"]
+            .sort_values("graphsage_score", ascending=True)["ring_id"]
             .drop_duplicates()
             .head(3)
             .astype(str)
@@ -275,7 +297,14 @@ def main() -> None:
     if not ring_ids:
         raise ValueError("no ring IDs were supplied or found in test predictions")
     paths = [
-        explain_ring(model, data, ring_id, args.out, epochs=args.epochs)
+        explain_ring(
+            model,
+            data,
+            ring_id,
+            args.out,
+            epochs=args.epochs,
+            model_version=checkpoint.get("model_version"),
+        )
         for ring_id in ring_ids[:3]
     ]
     print(json.dumps([str(path) for path in paths], indent=2))

@@ -1,0 +1,13 @@
+.git
+.dvc/cache
+.venv
+__pycache__
+.pytest_cache
+mlruns
+data
+notebooks
+tests
+*.pyc
+results/*
+!results/serving/
+!results/serving/**

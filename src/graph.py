@@ -63,6 +63,29 @@ def _numeric_frame(frame: pd.DataFrame, index: pd.Index) -> pd.DataFrame:
     return frame.astype(np.float32)
 
 
+def build_rider_structural_features(trips: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate cross-entity reuse signals for explicit graph ablations."""
+    required = {"rider_id", "driver_id", "device_id", "payment_id"}
+    missing = required.difference(trips.columns)
+    if missing:
+        raise ValueError(f"trips is missing required columns: {sorted(missing)}")
+    work = trips.loc[:, sorted(required)].copy()
+    if work.isna().any().any():
+        raise ValueError("graph identifiers cannot be null")
+    for entity in ("driver_id", "device_id", "payment_id"):
+        reuse = work.groupby(entity)["rider_id"].nunique()
+        work[f"{entity}_rider_degree"] = work[entity].map(reuse)
+    features = work.groupby("rider_id", sort=True).agg(
+        max_driver_rider_degree=("driver_id_rider_degree", "max"),
+        mean_driver_rider_degree=("driver_id_rider_degree", "mean"),
+        max_device_rider_degree=("device_id_rider_degree", "max"),
+        mean_device_rider_degree=("device_id_rider_degree", "mean"),
+        max_payment_rider_degree=("payment_id_rider_degree", "max"),
+        mean_payment_rider_degree=("payment_id_rider_degree", "mean"),
+    )
+    return features.astype(np.float32)
+
+
 def build_node_features(
     riders: pd.DataFrame,
     drivers: pd.DataFrame,
@@ -88,11 +111,6 @@ def build_node_features(
     else:
         work["route"] = work["driver_id"].astype(str)
 
-    device_rider_degree = work.groupby("device_id")["rider_id"].nunique()
-    payment_rider_degree = work.groupby("payment_id")["rider_id"].nunique()
-    work["device_rider_degree"] = work["device_id"].map(device_rider_degree)
-    work["payment_rider_degree"] = work["payment_id"].map(payment_rider_degree)
-
     rider_group = work.groupby("rider_id", sort=False)
     rider_features = rider_group.agg(
         trip_count=("rider_id", "size"),
@@ -108,8 +126,6 @@ def build_node_features(
         short_trip_fraction=("short_trip", "mean"),
         night_trip_fraction=("night_trip", "mean"),
         route_degree=("route", "nunique"),
-        max_device_rider_degree=("device_rider_degree", "max"),
-        max_payment_rider_degree=("payment_rider_degree", "max"),
     )
     rider_features["hour_entropy"] = _entropy_by(work["rider_id"], work["hour"])
     rider_features["route_repeat_fraction"] = (

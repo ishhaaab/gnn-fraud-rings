@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.metadata
 import json
 import warnings
 from datetime import datetime, timezone
@@ -18,7 +19,12 @@ from sklearn.metrics import average_precision_score, roc_curve
 from src.baseline import rider_aggregates, train_baseline
 from src.deepwalk import deepwalk_embeddings, isolation_scores
 from src.gnn import build_pyg_data, train_gnn
-from src.graph import build_edge_lists, build_node_features
+from src.graph import (
+    build_edge_lists,
+    build_node_features,
+    build_rider_structural_features,
+)
+from src.serving import write_serving_artifacts
 from src.split import make_rider_splits
 
 
@@ -57,6 +63,24 @@ def pr_metrics(y_true, scores) -> dict[str, float]:
     }
 
 
+def threshold_at_fpr(y_true, scores, max_fpr: float = 0.01) -> float:
+    """Select the lowest finite threshold at the best recall under an FPR cap."""
+    labels = np.asarray(y_true, dtype=np.int8)
+    predictions = np.asarray(scores, dtype=float)
+    if labels.ndim != 1 or predictions.ndim != 1 or len(labels) != len(predictions):
+        raise ValueError("y_true and scores must be matching one-dimensional arrays")
+    if set(np.unique(labels)) != {0, 1}:
+        raise ValueError("y_true must contain both binary classes")
+    if not np.isfinite(predictions).all() or not 0 <= max_fpr <= 1:
+        raise ValueError("scores must be finite and max_fpr must be in [0, 1]")
+    fpr, tpr, thresholds = roc_curve(labels, predictions, drop_intermediate=False)
+    eligible = fpr <= np.nextafter(max_fpr, np.inf)
+    best_recall = np.max(tpr[eligible])
+    candidates = thresholds[eligible & np.isclose(tpr, best_recall)]
+    candidates = candidates[np.isfinite(candidates)]
+    return float(np.min(candidates)) if len(candidates) else 1.0
+
+
 def _load_tables(data_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     paths = {name: data_dir / f"{name}.parquet" for name in ("riders", "drivers", "trips")}
     missing = [str(path) for path in paths.values() if not path.exists()]
@@ -67,7 +91,12 @@ def _load_tables(data_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     return tuple(pd.read_parquet(paths[name]) for name in ("riders", "drivers", "trips"))
 
 
-def _model_version(data_dir: Path, seed: int, settings: dict) -> str:
+def _model_version(
+    data_dir: Path,
+    seed: int,
+    settings: dict,
+    state_dict: dict[str, torch.Tensor],
+) -> str:
     digest = hashlib.sha256(json.dumps({"seed": seed, **settings}, sort_keys=True).encode())
     for name in ("riders.parquet", "drivers.parquet", "trips.parquet"):
         path = data_dir / name
@@ -76,6 +105,15 @@ def _model_version(data_dir: Path, seed: int, settings: dict) -> str:
         with path.open("rb") as stream:
             while chunk := stream.read(1024 * 1024):
                 digest.update(chunk)
+    source_dir = Path(__file__).resolve().parent
+    for name in (
+        "baseline.py", "deepwalk.py", "evaluate.py", "generate.py", "gnn.py",
+        "graph.py", "serving.py", "split.py",
+    ):
+        digest.update((source_dir / name).read_bytes())
+    for name, tensor in sorted(state_dict.items()):
+        digest.update(name.encode())
+        digest.update(tensor.detach().cpu().contiguous().numpy().tobytes())
     return f"graphsage-{digest.hexdigest()[:12]}"
 
 
@@ -181,6 +219,10 @@ def run_comparison(
         "walks_per_node": walks_per_node,
         "deepwalk_epochs": deepwalk_epochs,
         "neighbor_sampling_requested": use_neighbor_sampling,
+        "torch_version": torch.__version__,
+        "torch_geometric_version": importlib.metadata.version("torch-geometric"),
+        "lightgbm_version": importlib.metadata.version("lightgbm"),
+        "scikit_learn_version": importlib.metadata.version("scikit-learn"),
     }
 
     riders, drivers, trips = _load_tables(data_dir)
@@ -207,6 +249,17 @@ def run_comparison(
     )
 
     graph = build_edge_lists(trips)
+    structural_features = build_rider_structural_features(trips).reindex(rider_index)
+    graph_degree_features = pd.concat([aggregates, structural_features], axis=1)
+    graph_degree_baseline = train_baseline(
+        graph_degree_features.loc[train_ids], labels.loc[train_ids], seed=seed
+    )
+    graph_degree_scores = pd.Series(
+        graph_degree_baseline.predict_proba(graph_degree_features)[:, 1],
+        index=rider_index,
+        name="graph_degree_score",
+    )
+
     embeddings = deepwalk_embeddings(
         graph,
         dim=deepwalk_dim,
@@ -216,17 +269,17 @@ def run_comparison(
         epochs=deepwalk_epochs,
         workers=1,
     )
-    anomaly = isolation_scores(embeddings, seed=seed)
     rider_tokens = pd.Index([f"rider::{rider_id}" for rider_id in rider_index])
     rider_embeddings = embeddings.reindex(rider_tokens).copy()
     if rider_embeddings.isna().any().any():
         raise RuntimeError("DeepWalk did not produce every rider embedding")
-    rider_embeddings.index = rider_index
+    anomaly = isolation_scores(rider_embeddings, seed=seed)
     deepwalk_scores = pd.Series(
         [anomaly[token] for token in rider_tokens],
         index=rider_index,
         name="deepwalk_score",
     )
+    rider_embeddings.index = rider_index
 
     combined_features = pd.concat(
         [aggregates, rider_embeddings.add_prefix("deepwalk_")], axis=1
@@ -253,6 +306,20 @@ def run_comparison(
     graphsage_scores = gnn_result["rider_scores"].reindex(rider_index).rename(
         "graphsage_score"
     )
+    no_edge_data = pyg_data.clone()
+    no_edge_data.edge_index = torch.empty((2, 0), dtype=torch.long)
+    no_edge_data.edge_type = torch.empty(0, dtype=torch.long)
+    no_edge_result = train_gnn(
+        no_edge_data,
+        seed=seed,
+        epochs=gnn_epochs,
+        patience=gnn_patience,
+        lr=gnn_lr,
+        use_neighbor_sampling=False,
+    )
+    no_edge_scores = no_edge_result["rider_scores"].reindex(rider_index).rename(
+        "graphsage_no_edges_score"
+    )
 
     predictions = pd.DataFrame(index=rider_index)
     predictions["split"] = [split_lookup[rider_id] for rider_id in rider_index]
@@ -261,16 +328,25 @@ def run_comparison(
     ring_sizes = riders.dropna(subset=["ring_id"]).groupby("ring_id")["rider_id"].size()
     predictions["ring_size"] = predictions["ring_id"].map(ring_sizes).fillna(0).astype(int)
     predictions = predictions.join(
-        [baseline_scores, deepwalk_scores, combined_scores, graphsage_scores]
+        [
+            baseline_scores,
+            graph_degree_scores,
+            deepwalk_scores,
+            combined_scores,
+            no_edge_scores,
+            graphsage_scores,
+        ]
     )
     predictions["reasons"] = _reason_strings(
-        node_features["rider"].reindex(rider_index)
+        node_features["rider"].reindex(rider_index).join(structural_features)
     )
 
     score_columns = {
         "baseline": "baseline_score",
+        "tabular_plus_graph_degrees": "graph_degree_score",
         "deepwalk_isolation": "deepwalk_score",
         "tabular_plus_deepwalk": "baseline_deepwalk_score",
+        "graphsage_no_edges": "graphsage_no_edges_score",
         "graphsage": "graphsage_score",
     }
     test_predictions = predictions.loc[test_ids]
@@ -302,14 +378,38 @@ def run_comparison(
         case["mean_graphsage_score"] = float(case["mean_graphsage_score"])
         case["max_graphsage_score"] = float(case["max_graphsage_score"])
 
-    model_version = _model_version(data_dir, seed, settings)
+    actual_settings = {
+        **settings,
+        "neighbor_sampling_used": bool(gnn_result["used_neighbor_sampling"]),
+    }
+    model_version = _model_version(
+        data_dir,
+        seed,
+        actual_settings,
+        gnn_result["model"].state_dict(),
+    )
+    val_ids = pd.Index(splits["val"])
+    operating_threshold = threshold_at_fpr(
+        labels.loc[val_ids], graphsage_scores.loc[val_ids], max_fpr=0.01
+    )
+    serving_summary = write_serving_artifacts(
+        pd.DataFrame({
+            "rider_id": rider_index,
+            "risk": graphsage_scores.to_numpy(),
+            "reasons": predictions["reasons"].to_numpy(),
+        }),
+        trips,
+        model_version=model_version,
+        threshold=operating_threshold,
+        out=out.parent / "serving",
+    )
     metrics = {
         "run": {
             "model_version": model_version,
             "created_at": datetime.now(timezone.utc).isoformat(),
-            **settings,
-            "neighbor_sampling_used": bool(gnn_result["used_neighbor_sampling"]),
+            **actual_settings,
             "gnn_best_epoch": int(gnn_result["best_epoch"]),
+            "no_edge_best_epoch": int(no_edge_result["best_epoch"]),
         },
         "data": {
             "riders": len(riders),
@@ -327,6 +427,7 @@ def run_comparison(
             for name, ids in splits.items()
         },
         "models": model_metrics,
+        "serving": serving_summary,
         "ring_size_slices": _slice_metrics(predictions, score_columns),
         "lowest_scoring_test_rings": failure_cases,
     }
@@ -335,9 +436,12 @@ def run_comparison(
     predictions.reset_index().to_parquet(predictions_path, index=False)
     baseline_path = out.parent / "baseline.joblib"
     combined_path = out.parent / "baseline_deepwalk.joblib"
+    graph_degree_path = out.parent / "baseline_graph_degrees.joblib"
     checkpoint_path = out.parent / "graphsage.pt"
+    no_edge_checkpoint_path = out.parent / "graphsage_no_edges.pt"
     joblib.dump(baseline, baseline_path)
     joblib.dump(combined, combined_path)
+    joblib.dump(graph_degree_baseline, graph_degree_path)
     torch.save({
         "state_dict": gnn_result["model"].state_dict(),
         "in_dim": pyg_data.x.shape[1],
@@ -345,14 +449,31 @@ def run_comparison(
         "feature_names": pyg_data.feature_names,
         "model_version": model_version,
     }, checkpoint_path)
+    torch.save({
+        "state_dict": no_edge_result["model"].state_dict(),
+        "in_dim": pyg_data.x.shape[1],
+        "hid_dim": no_edge_result["model"].conv1.out_channels,
+        "feature_names": pyg_data.feature_names,
+        "model_version": model_version,
+    }, no_edge_checkpoint_path)
     out.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
 
     if track_mlflow:
         run_id = _log_mlflow(
             metrics,
             out,
-            [predictions_path, baseline_path, combined_path, checkpoint_path],
-            settings,
+            [
+                predictions_path,
+                baseline_path,
+                graph_degree_path,
+                combined_path,
+                checkpoint_path,
+                no_edge_checkpoint_path,
+                out.parent / "serving" / "manifest.json",
+                out.parent / "serving" / "rider_scores.parquet",
+                out.parent / "serving" / "candidate_rings.json",
+            ],
+            actual_settings,
         )
         if run_id:
             metrics["run"]["mlflow_run_id"] = run_id

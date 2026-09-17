@@ -100,6 +100,29 @@ def make_marketplace(
         if len(shared):
             identities[shared] = identities[rng.integers(0, shared, size=len(shared))]
 
+    # Benign family/fleet groups create reuse degrees that overlap fraud rings.
+    # Their trips still span unrelated drivers and normal behavior, so reuse
+    # degree alone is not a perfect label proxy.
+    desired_decoys = min(n_riders // 10, n_rings * 10)
+    max_decoys = max(0, n_riders - n_rings * 15)
+    decoy_count = min(desired_decoys, max_decoys)
+    decoy_indices = rng.permutation(n_riders)[:decoy_count]
+    decoy_cursor = 0
+    benign_group = 0
+    while decoy_cursor + 5 <= len(decoy_indices):
+        group_size = min(int(rng.integers(5, 16)), len(decoy_indices) - decoy_cursor)
+        if group_size < 5:
+            break
+        members = decoy_indices[decoy_cursor:decoy_cursor + group_size]
+        pattern = rng.choice(["device", "payment", "both"], p=[0.4, 0.4, 0.2])
+        shared_index = n_riders + n_rings + benign_group
+        if pattern in {"device", "both"}:
+            primary_device[members] = f"device-{shared_index:06d}"
+        if pattern in {"payment", "both"}:
+            primary_payment[members] = f"payment-{shared_index:06d}"
+        decoy_cursor += group_size
+        benign_group += 1
+
     trip_counts = 2 + np.clip(rng.zipf(1.9, size=n_riders) - 1, 0, 48)
     trip_rider_idx = np.repeat(np.arange(n_riders), trip_counts)
     n_normal = len(trip_rider_idx)
@@ -168,7 +191,10 @@ def make_marketplace(
     })
 
     if n_rings:
-        rider_order = rng.permutation(n_riders)
+        eligible_riders = np.setdiff1d(
+            np.arange(n_riders), decoy_indices[:decoy_cursor], assume_unique=False
+        )
+        rider_order = rng.permutation(eligible_riders)
         driver_order = rng.permutation(n_drivers)
         rider_cursor = 0
         driver_cursor = 0
@@ -177,7 +203,10 @@ def make_marketplace(
 
         for ring_number in range(n_rings):
             ring_id = f"ring-{ring_number:03d}"
-            ring_size = int(rng.integers(5, 16))
+            # Keep both evaluation slices represented throughout activation time.
+            ring_size = int(
+                rng.integers(5, 8) if ring_number % 3 == 0 else rng.integers(8, 16)
+            )
             driver_count = int(rng.integers(2, 5))
             if rider_cursor + ring_size > n_riders or driver_cursor + driver_count > n_drivers:
                 raise ValueError("not enough entities for sampled ring sizes; reduce n_rings")
@@ -208,8 +237,8 @@ def make_marketplace(
                 selected_rows.extend(int(row) for row in chosen)
             selected = np.asarray(selected_rows, dtype=np.int64)
             n_injected = len(selected)
-            shared_device = f"device-ring-{ring_number:03d}"
-            shared_payment = f"payment-ring-{ring_number:03d}"
+            shared_device = f"device-{n_riders + ring_number:06d}"
+            shared_payment = f"payment-{n_riders + ring_number:06d}"
             pattern = rng.choice(["both", "device", "payment"], p=[0.55, 0.25, 0.20])
             ring_devices = trips.loc[selected, "device_id"].to_numpy(dtype=object, copy=True)
             ring_payments = trips.loc[selected, "payment_id"].to_numpy(dtype=object, copy=True)

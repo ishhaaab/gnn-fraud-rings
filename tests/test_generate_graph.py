@@ -5,7 +5,12 @@ import pandas as pd
 import pytest
 
 from src.generate import make_marketplace, save_snapshot
-from src.graph import RELATION_COLUMNS, build_edge_lists, build_node_features
+from src.graph import (
+    RELATION_COLUMNS,
+    build_edge_lists,
+    build_node_features,
+    build_rider_structural_features,
+)
 from src.split import make_rider_splits
 
 
@@ -31,6 +36,18 @@ def test_generator_is_seeded_and_has_expected_signal(marketplace):
     assert ring_trips["dist_m"].le(2000).mean() > normal_trips["dist_m"].le(2000).mean()
     assert set(trips["rider_id"]).issubset(set(riders["rider_id"]))
     assert set(trips["driver_id"]).issubset(set(drivers["driver_id"]))
+    for column in ("device_id", "payment_id"):
+        assert not trips[column].astype(str).str.contains(
+            "ring|benign", case=False, regex=True
+        ).any()
+    structural = build_rider_structural_features(trips).join(
+        riders.set_index("rider_id")["is_fraud"]
+    )
+    normal = structural.loc[~structural["is_fraud"]]
+    assert normal[["max_device_rider_degree", "max_payment_rider_degree"]].max().max() >= 5
+    ring_sizes = riders.dropna(subset=["ring_id"]).groupby("ring_id").size()
+    assert ring_sizes.between(5, 7).any()
+    assert ring_sizes.ge(8).any()
 
 
 def test_snapshot_writes_canonical_and_versioned_tables(tmp_path, marketplace):
@@ -67,6 +84,8 @@ def test_node_features_are_finite_and_exclude_labels(marketplace):
 
     assert set(features) == {"rider", "driver", "device", "payment"}
     assert features["rider"].index.tolist() == riders["rider_id"].tolist()
+    assert "max_device_rider_degree" not in features["rider"].columns
+    assert "max_payment_rider_degree" not in features["rider"].columns
     for frame in features.values():
         assert np.isfinite(frame.to_numpy()).all()
         assert "is_fraud" not in frame.columns

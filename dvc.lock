@@ -5,8 +5,8 @@ stages:
     deps:
     - path: src/generate.py
       hash: md5
-      md5: e7f72d89c143a38af0602dd70a5cd454
-      size: 14396
+      md5: 59c69610c5f64e000ed0501d917a4daf
+      size: 15842
     params:
       params.yaml:
         generate:
@@ -18,51 +18,51 @@ stages:
     outs:
     - path: data/graph_snapshots/wk00/drivers.parquet
       hash: md5
-      md5: ac2e92e67db7682b8ed1c5de47690ba7
-      size: 35377
+      md5: 5c06931613e313b4f1672345fbb4e1ed
+      size: 35390
     - path: data/graph_snapshots/wk00/metadata.json
       hash: md5
-      md5: f166578c56141640d04ee61489eea82f
+      md5: 51ab9000595ba191938b1d8f55765617
       size: 144
     - path: data/graph_snapshots/wk00/riders.parquet
       hash: md5
-      md5: a5ca315779e02b25e018dc365006c6d4
-      size: 225449
+      md5: 37c24a6592b7ce9d856b34c8c6543053
+      size: 225477
     - path: data/graph_snapshots/wk00/trips.parquet
       hash: md5
-      md5: 02c43fcb3a7a54e4723bd0dc9a19d490
-      size: 3145984
+      md5: 9e7388867967cd235ffa5bc118ee63d0
+      size: 3182675
     - path: data/processed/drivers.parquet
       hash: md5
-      md5: ac2e92e67db7682b8ed1c5de47690ba7
-      size: 35377
+      md5: 5c06931613e313b4f1672345fbb4e1ed
+      size: 35390
     - path: data/processed/metadata.json
       hash: md5
-      md5: f166578c56141640d04ee61489eea82f
+      md5: 51ab9000595ba191938b1d8f55765617
       size: 144
     - path: data/processed/riders.parquet
       hash: md5
-      md5: a5ca315779e02b25e018dc365006c6d4
-      size: 225449
+      md5: 37c24a6592b7ce9d856b34c8c6543053
+      size: 225477
     - path: data/processed/trips.parquet
       hash: md5
-      md5: 02c43fcb3a7a54e4723bd0dc9a19d490
-      size: 3145984
+      md5: 9e7388867967cd235ffa5bc118ee63d0
+      size: 3182675
   train:
     cmd: python -m src.evaluate --data-dir data/processed --out results/metrics.json --seed 0 --gnn-epochs 40 --gnn-patience 8 --gnn-lr 0.005 --deepwalk-dim 64 --walk-length 20 --walks-per-node 4 --deepwalk-epochs 3 --no-mlflow
     deps:
     - path: data/processed/drivers.parquet
       hash: md5
-      md5: ac2e92e67db7682b8ed1c5de47690ba7
-      size: 35377
+      md5: 5c06931613e313b4f1672345fbb4e1ed
+      size: 35390
     - path: data/processed/riders.parquet
       hash: md5
-      md5: a5ca315779e02b25e018dc365006c6d4
-      size: 225449
+      md5: 37c24a6592b7ce9d856b34c8c6543053
+      size: 225477
     - path: data/processed/trips.parquet
       hash: md5
-      md5: 02c43fcb3a7a54e4723bd0dc9a19d490
-      size: 3145984
+      md5: 9e7388867967cd235ffa5bc118ee63d0
+      size: 3182675
     - path: src/baseline.py
       hash: md5
       md5: cd97a60fae9243655174b875328e8d80
@@ -73,16 +73,20 @@ stages:
       size: 11192
     - path: src/evaluate.py
       hash: md5
-      md5: 39f9280f5ecff5f6a352d07547c71c00
-      size: 15539
+      md5: 45250bc9ef70ab047e0747168db95f4f
+      size: 20278
     - path: src/gnn.py
       hash: md5
       md5: 99014f6a2b2d9a1d795f2ba2c5a63e85
       size: 29992
     - path: src/graph.py
       hash: md5
-      md5: a73e4d24b0a64e91cedc886a9f6ae04b
-      size: 7724
+      md5: 7958d6b6ab94361e343797b073660c39
+      size: 8493
+    - path: src/serving.py
+      hash: md5
+      md5: 049e0ac6a4fce210a202837726dc37dc
+      size: 8010
     - path: src/split.py
       hash: md5
       md5: f78702f201c078f249821775a91ab7f6
@@ -101,21 +105,41 @@ stages:
     outs:
     - path: results/baseline.joblib
       hash: md5
-      md5: c6d7bb170b4df0ded23a7aa7f29d13d7
-      size: 691046
+      md5: c7eec4d709af6fd81676d3af2d7bef23
+      size: 691718
     - path: results/baseline_deepwalk.joblib
       hash: md5
-      md5: 4829a7d969f04b0c001fd35f3c779729
-      size: 705446
+      md5: 3b861513decc7410b8d96a1edc550412
+      size: 704918
+    - path: results/baseline_graph_degrees.joblib
+      hash: md5
+      md5: 971833224a0cb17597579ac312bd354c
+      size: 521670
     - path: results/graphsage.pt
       hash: md5
-      md5: 24a85143d0927a085d5aac5a0b2a3653
-      size: 16553
+      md5: 1d7896fa1d2d3fba69e47d3e011f1e2d
+      size: 15465
+    - path: results/graphsage_no_edges.pt
+      hash: md5
+      md5: 067a09179bf164215dbb0646bdc1330d
+      size: 15591
     - path: results/metrics.json
       hash: md5
-      md5: 57f1b6fb773705fd3a08dc4ad5c377b8
-      size: 4323
+      md5: fcc034061eff8fb6f5d189dd2b751f32
+      size: 5869
     - path: results/predictions.parquet
       hash: md5
-      md5: ec438d0d954ae060e63fffadb21ee1ce
-      size: 881965
+      md5: 748b6dea27e5fa7da6de92c1eb19e8b3
+      size: 1200441
+    - path: results/serving/candidate_rings.json
+      hash: md5
+      md5: c8f3da149df85f4784bf0948c8bf78b2
+      size: 588597
+    - path: results/serving/manifest.json
+      hash: md5
+      md5: fb7b36d8008dc47b84469b26cec2296e
+      size: 346
+    - path: results/serving/rider_scores.parquet
+      hash: md5
+      md5: 04d7b077ab022c715e26b32f7d5c380d
+      size: 278163

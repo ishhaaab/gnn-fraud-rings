@@ -1,0 +1,293 @@
+{
+  "ring_id": "ring-040",
+  "target_rider": "rider-014026",
+  "target_risk": 0.72086501121521,
+  "target_selection": "lowest-risk member",
+  "model_version": "graphsage-87e17d67f4ac",
+  "algorithm": "GNNExplainer",
+  "epochs": 100,
+  "top_features": [
+    {
+      "feature": "trip_count",
+      "importance": 0.5936453938484192
+    },
+    {
+      "feature": "driver_degree",
+      "importance": 0.5896610617637634
+    },
+    {
+      "feature": "route_repeat_fraction",
+      "importance": 0.569547176361084
+    },
+    {
+      "feature": "fare_mean",
+      "importance": 0.5654355883598328
+    },
+    {
+      "feature": "payment_degree",
+      "importance": 0.5629737377166748
+    },
+    {
+      "feature": "distance_std",
+      "importance": 0.514078676700592
+    },
+    {
+      "feature": "short_trip_fraction",
+      "importance": 0.45941799879074097
+    },
+    {
+      "feature": "active_weeks",
+      "importance": 0.4473828971385956
+    },
+    {
+      "feature": "hour_entropy",
+      "importance": 0.4463857114315033
+    },
+    {
+      "feature": "node_type=rider",
+      "importance": 0.43071168661117554
+    }
+  ],
+  "top_edges": [
+    {
+      "source": "payment-020040",
+      "source_type": "payment",
+      "target": "rider-014026",
+      "target_type": "rider",
+      "relation": "rev_pays_with",
+      "importance": 0.5723878741264343
+    },
+    {
+      "source": "rider-019872",
+      "source_type": "rider",
+      "target": "payment-020040",
+      "target_type": "payment",
+      "relation": "pays_with",
+      "importance": 0.42235836386680603
+    },
+    {
+      "source": "payment-014026",
+      "source_type": "payment",
+      "target": "rider-014026",
+      "target_type": "rider",
+      "relation": "rev_pays_with",
+      "importance": 0.4059678614139557
+    },
+    {
+      "source": "device-014026",
+      "source_type": "device",
+      "target": "rider-014026",
+      "target_type": "rider",
+      "relation": "rev_uses",
+      "importance": 0.405771940946579
+    },
+    {
+      "source": "driver-01845",
+      "source_type": "driver",
+      "target": "rider-014026",
+      "target_type": "rider",
+      "relation": "rev_rides_with",
+      "importance": 0.40062645077705383
+    },
+    {
+      "source": "rider-001290",
+      "source_type": "rider",
+      "target": "payment-020040",
+      "target_type": "payment",
+      "relation": "pays_with",
+      "importance": 0.40003520250320435
+    },
+    {
+      "source": "driver-02248",
+      "source_type": "driver",
+      "target": "rider-014026",
+      "target_type": "rider",
+      "relation": "rev_rides_with",
+      "importance": 0.39841383695602417
+    },
+    {
+      "source": "driver-00681",
+      "source_type": "driver",
+      "target": "rider-014026",
+      "target_type": "rider",
+      "relation": "rev_rides_with",
+      "importance": 0.3891686201095581
+    },
+    {
+      "source": "driver-00905",
+      "source_type": "driver",
+      "target": "rider-014026",
+      "target_type": "rider",
+      "relation": "rev_rides_with",
+      "importance": 0.3799290359020233
+    },
+    {
+      "source": "driver-00414",
+      "source_type": "driver",
+      "target": "rider-014026",
+      "target_type": "rider",
+      "relation": "rev_rides_with",
+      "importance": 0.3719936013221741
+    },
+    {
+      "source": "rider-008852",
+      "source_type": "rider",
+      "target": "payment-020040",
+      "target_type": "payment",
+      "relation": "pays_with",
+      "importance": 0.34712594747543335
+    },
+    {
+      "source": "rider-011897",
+      "source_type": "rider",
+      "target": "payment-020040",
+      "target_type": "payment",
+      "relation": "pays_with",
+      "importance": 0.33367499709129333
+    },
+    {
+      "source": "rider-018569",
+      "source_type": "rider",
+      "target": "payment-020040",
+      "target_type": "payment",
+      "relation": "pays_with",
+      "importance": 0.3168366253376007
+    },
+    {
+      "source": "driver-00300",
+      "source_type": "driver",
+      "target": "rider-014026",
+      "target_type": "rider",
+      "relation": "rev_rides_with",
+      "importance": 0.2980034649372101
+    },
+    {
+      "source": "driver-00905",
+      "source_type": "driver",
+      "target": "device-014026",
+      "target_type": "device",
+      "relation": "sees",
+      "importance": 0.29330316185951233
+    },
+    {
+      "source": "rider-000355",
+      "source_type": "rider",
+      "target": "payment-020040",
+      "target_type": "payment",
+      "relation": "pays_with",
+      "importance": 0.288176566362381
+    },
+    {
+      "source": "driver-00300",
+      "source_type": "driver",
+      "target": "device-014026",
+      "target_type": "device",
+      "relation": "sees",
+      "importance": 0.2834165692329407
+    },
+    {
+      "source": "driver-00414",
+      "source_type": "driver",
+      "target": "device-014026",
+      "target_type": "device",
+      "relation": "sees",
+      "importance": 0.28297340869903564
+    },
+    {
+      "source": "driver-02248",
+      "source_type": "driver",
+      "target": "device-014026",
+      "target_type": "device",
+      "relation": "sees",
+      "importance": 0.2796473801136017
+    },
+    {
+      "source": "driver-01845",
+      "source_type": "driver",
+      "target": "device-014026",
+      "target_type": "device",
+      "relation": "sees",
+      "importance": 0.27842751145362854
+    },
+    {
+      "source": "device-003060",
+      "source_type": "device",
+      "target": "driver-00681",
+      "target_type": "driver",
+      "relation": "rev_sees",
+      "importance": 0.27791789174079895
+    },
+    {
+      "source": "rider-018120",
+      "source_type": "rider",
+      "target": "driver-01845",
+      "target_type": "driver",
+      "relation": "rides_with",
+      "importance": 0.27760589122772217
+    },
+    {
+      "source": "device-015603",
+      "source_type": "device",
+      "target": "driver-00681",
+      "target_type": "driver",
+      "relation": "rev_sees",
+      "importance": 0.2775264084339142
+    },
+    {
+      "source": "rider-006070",
+      "source_type": "rider",
+      "target": "driver-00681",
+      "target_type": "driver",
+      "relation": "rides_with",
+      "importance": 0.27748262882232666
+    },
+    {
+      "source": "device-015172",
+      "source_type": "device",
+      "target": "driver-00681",
+      "target_type": "driver",
+      "relation": "rev_sees",
+      "importance": 0.27739858627319336
+    },
+    {
+      "source": "device-018394",
+      "source_type": "device",
+      "target": "driver-00905",
+      "target_type": "driver",
+      "relation": "rev_sees",
+      "importance": 0.27726057171821594
+    },
+    {
+      "source": "rider-010220",
+      "source_type": "rider",
+      "target": "driver-02248",
+      "target_type": "driver",
+      "relation": "rides_with",
+      "importance": 0.27707594633102417
+    },
+    {
+      "source": "device-alt-014692",
+      "source_type": "device",
+      "target": "driver-00681",
+      "target_type": "driver",
+      "relation": "rev_sees",
+      "importance": 0.2770727574825287
+    },
+    {
+      "source": "device-alt-007054",
+      "source_type": "device",
+      "target": "driver-00681",
+      "target_type": "driver",
+      "relation": "rev_sees",
+      "importance": 0.27703455090522766
+    },
+    {
+      "source": "rider-001863",
+      "source_type": "rider",
+      "target": "driver-00681",
+      "target_type": "driver",
+      "relation": "rides_with",
+      "importance": 0.27702686190605164
+    }
+  ]
+}

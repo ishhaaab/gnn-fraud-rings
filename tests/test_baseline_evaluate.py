@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from src.baseline import rider_aggregates, train_baseline
-from src.evaluate import pr_metrics
+from src.evaluate import pr_metrics, threshold_at_fpr
 
 
 @pytest.fixture
@@ -74,6 +74,13 @@ def test_pr_metrics_known_ranking_and_small_k_behavior():
     assert metrics["recall_at_1pct_fpr"] == pytest.approx(0.5)
     assert metrics["precision_at_100"] == pytest.approx(0.5)
     assert metrics["precision_at_500"] == pytest.approx(0.5)
+
+
+def test_threshold_at_fpr_uses_validation_operating_point():
+    labels = np.array([1, 1, 0, 0, 0, 0])
+    scores = np.array([0.9, 0.8, 0.7, 0.2, 0.1, 0.0])
+
+    assert threshold_at_fpr(labels, scores, max_fpr=0.01) == pytest.approx(0.8)
 
 
 @pytest.mark.parametrize(

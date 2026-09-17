@@ -26,7 +26,12 @@ def test_run_comparison_writes_metrics_predictions_and_models(tmp_path):
     )
 
     assert set(metrics["models"]) == {
-        "baseline", "deepwalk_isolation", "tabular_plus_deepwalk", "graphsage",
+        "baseline",
+        "tabular_plus_graph_degrees",
+        "deepwalk_isolation",
+        "tabular_plus_deepwalk",
+        "graphsage_no_edges",
+        "graphsage",
     }
     assert metrics["data"]["rings"] == 6
     assert json.loads(out.read_text(encoding="utf-8"))["run"]["seed"] == 41
@@ -35,5 +40,15 @@ def test_run_comparison_writes_metrics_predictions_and_models(tmp_path):
     assert predictions["graphsage_score"].between(0, 1).all()
     assert predictions["reasons"].map(json.loads).map(bool).all()
     assert (out.parent / "baseline.joblib").exists()
+    assert (out.parent / "baseline_graph_degrees.joblib").exists()
     assert (out.parent / "baseline_deepwalk.joblib").exists()
     assert (out.parent / "graphsage.pt").exists()
+    assert (out.parent / "graphsage_no_edges.pt").exists()
+    manifest = json.loads(
+        (out.parent / "serving" / "manifest.json").read_text(encoding="utf-8")
+    )
+    assert manifest["counts"]["riders"] == 150
+    serving_scores = pd.read_parquet(out.parent / "serving" / "rider_scores.parquet")
+    assert serving_scores.columns.tolist() == [
+        "rider_id", "risk", "reasons", "model_version",
+    ]
